@@ -75,7 +75,6 @@ suite('Patch', function () {
         done("Should have failed with a 409.");
       })
       .fail(function (e) {
-        console.log('failed status', e.statusCode)
         done();
       });
   });

@@ -14,6 +14,8 @@ $ npm install orchestrate
 # Running Tests
 Currently, Orchestrate.js runs against the actual Orchestrate API. At the moment, there is no available local version to work with.
 
+The tests will write data to collections in the app associated with an api key you provide. The collection names are unlikely to collide with any of your own. You will need to export your api key for the tests to use it (see below). If your app is NOT located in AWS US East, you will also need to export a variable indicating the datacenter (see example below). A list of the datacenter and the endpoints can be found here [Datacenters](https://orchestrate.io/docs/multi-data-center) (be sure to only provide the hostname for the value).
+
 Ensure all dependencies are installed within the orchestrate director by running
 
 ```
@@ -22,6 +24,11 @@ $ npm install
 To run tests:
 
 ```
+# provide your own api_key value
+$ export ORCHESTRATE_API_KEY="Enter API key HERE"
+# in this example, the app is located in CTL-UC1, update as appropriate
+# for your app's Datacenter https://orchestrate.io/docs/multi-data-center
+$ export ORCHESTRATE_API_ENDPOINT="api.ctl-uc1-a.orchestrate.io"
 $ npm test
 ```
 
