@@ -22,7 +22,7 @@ suite('Search', function () {
     });
   });
 
-    // Basic search
+  // Basic search
   test('Basic search', function (done) {
     db.newSearchBuilder()
       .collection(users.collection)
@@ -30,6 +30,21 @@ suite('Search', function () {
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.equal(2, res.body.count);
+        done();
+      })
+      .fail(function (res) {
+        done(res);
+      });
+  });
+
+  // Cross-collection search (find all items in the 'users' collections, via query clause)
+  test('Cross-collection search', function (done) {
+    db.newSearchBuilder()
+      .limit(10)
+      .query('@path.collection:`' + users.collection + '`')
+      .then(function (res) {
+        assert.equal(200, res.statusCode);
+        assert.equal(3, res.body.count);
         done();
       })
       .fail(function (res) {
