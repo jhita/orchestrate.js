@@ -95,6 +95,43 @@ suite('Graph', function () {
       });
   });
 
+  test('Search for graph relationship', function(done) {
+
+    var properties = [
+      { "foo" : "bar" },
+      { "bing" : "bong" }
+    ];
+
+    var relations = [
+      createRelation(users.collection, users.steve.email, users.kelsey.email, "likes", properties[0]),
+      createRelation(users.collection, users.kelsey.email, users.david.email, "likes", properties[1])
+    ];
+
+    Q.all(relations)
+      .then(function (res) {
+        assert.equal(2, res.length);
+        // Test that each of the requests succeeded
+        for (var i in res) {
+          assert.equal(201, res[i].statusCode);
+        }
+        // Search for one of these relationships
+
+        // Retrieve each of the relations and make sure they contain the correct properties
+        searchForRelationship(
+          "@path.source.collection:`" + users.collection + "` AND value.foo:bar",
+          users.steve.email, users.kelsey.email, "likes"
+        );
+        searchForRelationship(
+          "@path.source.collection:`" + users.collection + "` AND value.bing:bong",
+          users.kelsey.email, users.david.email, "likes"
+        );
+        done();
+      })
+      .fail(function (res) {
+        done(res);
+      });
+  });
+
   test('Conditionally create (if-match) graph relationship with properties', function(done) {
 
     var kind = "coworkers"
@@ -192,6 +229,22 @@ suite('Graph', function () {
     Q.all(promise)
       .then(function(res) {
         assert.equal(res.body, properties);
+        done();
+      })
+      .fail(function (res) {
+        done(res);
+      });
+  }
+
+  function searchForRelationship(query, expectedSourceKey, expectedDestinationKey, expectedKind, done) {
+    var promise = db.newSearchBuilder()
+      .query(query)
+      .then(function (res) {
+        assert.equal(200, res.statusCode);
+        assert.equal(1, res.body.count);
+        assert.equal(expectedSourceKey, res.body.results[0].path.source.key);
+        assert.equal(expectedDestinationKey, res.body.results[0].path.destination.key);
+        assert.equal(expectedKind, res.body.results[1].path.relation);
         done();
       })
       .fail(function (res) {
