@@ -12,49 +12,41 @@ var util = require('util');
 var misc = require('./misc');
 
 suite('Search', function () {
-  suiteSetup(function (done) {
-    users.reset(function(res) {
-      if (!res) {
-        users.insertAll(done);
-      } else {
-        done(res);
-      }
-    });
+  suiteSetup(function () {
+    return users.reset().then(function() { return users.insertAll(); });
+  });
+
+  suiteTeardown(function() {
+    return db.deleteCollection(users.collection);
   });
 
   // Basic search
-  test('Basic search', function (done) {
-    db.newSearchBuilder()
+  test('Basic search', function () {
+    return db.newSearchBuilder()
       .collection(users.collection)
       .query('location: New*')
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.equal(2, res.body.count);
-        done();
-      })
-      .fail(function (res) {
-        done(res);
+        return Q.resolve(res);
       });
   });
 
   // Cross-collection search (find all items in the 'users' collections, via query clause)
-  test('Cross-collection search', function (done) {
-    db.newSearchBuilder()
+  test('Cross-collection search', function () {
+    return db.newSearchBuilder()
       .limit(10)
       .query('@path.collection:`' + users.collection + '`')
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.equal(3, res.body.count);
-        done();
-      })
-      .fail(function (res) {
-        done(res);
+        return Q.resolve(res);
       });
   });
 
   // Search with offset
-  test('Search with offset', function (done) {
-    db.newSearchBuilder()
+  test('Search with offset', function () {
+    return db.newSearchBuilder()
       .collection(users.collection)
       .offset(2)
       .query('*')
@@ -63,16 +55,13 @@ suite('Search', function () {
         // Order doesn't matter, but there should be only 1 out of the three in
         // the result
         assert.equal(1, res.body.count);
-        done();
-      })
-      .fail(function (res) {
-        done(res);
+        return Q.resolve(res);
       });
   });
 
   // Search with offset and limit
-  test('Search with offset & limit', function (done) {
-    db.newSearchBuilder()
+  test('Search with offset & limit', function () {
+    return db.newSearchBuilder()
       .collection(users.collection)
       .offset(1)
       .limit(1)
@@ -83,36 +72,71 @@ suite('Search', function () {
         //        assert.equal(2, res.body.total_count);
         assert.equal(1, res.body.count);
         misc.assertUrlsEqual(res.body.next, '/v0/'+users.collection+'?limit=1&query=*&offset=2');
-        done();
-      })
-      .fail(function (res) {
-        done(res);
+        return Q.resolve(res);
       });
   });
 
   // Search and sort
-  test('Search and sort', function (done) {
-    db.newSearchBuilder()
-      .collection(users.collection)
-      .sort('name', 'desc')     // Reverse-alpha
-      .query('New York')
-      .then(function (res) {
-        assert.equal(200, res.statusCode);
-        assert.equal(2, res.body.results.length);
-        assert.equal(users.steve.email, res.body.results[0].path.key);
-        assert.equal(users.david.email, res.body.results[1].path.key);
+  suite('Sorting', function() {
+    test('Search and sort', function () {
+      return db.newSearchBuilder()
+        .collection(users.collection)
+        .sort('name', 'desc')     // Reverse-alpha
+        .query('New York')
+        .then(function (res) {
+          assert.equal(200, res.statusCode);
+          assert.equal(2, res.body.results.length);
+          assert.equal(users.steve.email, res.body.results[0].path.key);
+          assert.equal(users.david.email, res.body.results[1].path.key);
+          return Q.resolve(res);
+        });
+    });
+
+    suite('Sort Generation', function() {
+      var builder;
+
+      setup(function(done) {
+        builder = db.newSearchBuilder();
         done();
-      })
-      .fail(function (res) {
-        done(res);
       });
+
+      test('sortRandom', function(done) {
+        builder.sortRandom();
+        assert.equal('_random', builder._generateSort());
+        done();
+      });
+
+      test('sortRandom with seedValue', function(done) {
+        builder.sortRandom('seed');
+        assert.equal('_random:seed', builder._generateSort());
+        done();
+      });
+
+      test('sortBy', function(done) {
+        builder.sortBy('value.foo');
+        assert.equal('value.foo', builder._generateSort());
+        done();
+      });
+
+      test('sortBy many fields', function(done) {
+        builder.sortBy('value.foo', 'value.bar:asc');
+        assert.equal('value.foo,value.bar:asc', builder._generateSort());
+        done();
+      });
+
+      test('sortBy and sortRandom', function(done) {
+        builder.sortBy('@path.key').sortRandom();
+        assert.equal('@path.key,_random', builder._generateSort());
+        done();
+      });
+    });
   });
 
   // TODO Geo-search
 
   // Aggregates
-  test('Search aggregates', function (done) {
-    db.newSearchBuilder()
+  test('Search aggregates', function () {
+    return db.newSearchBuilder()
     .collection(users.collection)
     .aggregate('stats', 'value.name')
     .top_values('value.tags')
@@ -137,14 +161,13 @@ suite('Search', function () {
     .query('value.location:NEAR:{latitude:12.3 longitude:56.7 radius:100km}')
     .then(function (res) {
       assert.equal(200, res.statusCode);
-      done();
-    })
-    .fail(done);
+      return Q.resolve(res);
+    });
   });
 
   // Search Events
-  test('Search events', function (done) {
-    db.newSearchBuilder()
+  test('Search events', function () {
+    return db.newSearchBuilder()
       .collection(users.collection)
       .kinds('event')
       .query('@path.type:activities AND steve')
@@ -154,10 +177,7 @@ suite('Search', function () {
         assert.equal(users.steve.email, res.body.results[0].path.key);
         assert.equal('event', res.body.results[0].path.kind);
         assert.equal('activities', res.body.results[0].path.type);
-        done();
-      })
-      .fail(function (res) {
-        done(res);
+        return Q.resolve(res);
       });
   });
 

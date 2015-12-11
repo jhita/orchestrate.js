@@ -11,11 +11,15 @@ var users = require('./testdata')('event.test');
 var util = require('util');
 
 suite('Events', function () {
-  suiteSetup(function(done) {
-    users.reset(done);
+  suiteSetup(function() {
+    return users.reset();
   });
 
-  test('Put/Get roundtrip', function (done) {
+  suiteTeardown(function() {
+    return db.deleteCollection(users.collection);
+  });
+
+  test('Put/Get roundtrip', function () {
     var op = function(tstamp, data) {
       return db.newEventBuilder()
         .from(users.collection, users.steve.email)
@@ -33,7 +37,7 @@ suite('Events', function () {
     writes.push(op(3, "message3"));
     writes.push(op(1, "message1"));
 
-    Q.all(writes)
+    return Q.all(writes)
       .then(function (res) {
         assert.equal(3, res.length);
         for (var i in res) {
@@ -54,10 +58,7 @@ suite('Events', function () {
           actual_ts.push(res.body.results[i].timestamp);
         }
         assert.deepEqual(expected_ts, actual_ts);
-        done();
-      })
-      .fail(function (res) {
-        done(res);
+        return Q.resolve(res);
       });
   });
 });
