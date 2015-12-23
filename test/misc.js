@@ -27,16 +27,19 @@ function assertUrlsEqual(a, b) {
 }
 
 suite('Misc', function () {
-  test('Service ping', function(done) {
-    db.ping()
+  test('Service ping', function() {
+    return db.ping()
       .then(function (res) {
         assert.equal(200, res.statusCode);
         var db2 = require('../lib-cov/client')("badtoken");
         return db2.ping();
       })
+      .then(function(res) {
+        return Q.reject("Expected badtoken ping to fail");
+      })
       .fail(function (res) {
         assert.equal(401, res.statusCode);
-        done();
+        return Q.resolve(res);
       });
   });
 });

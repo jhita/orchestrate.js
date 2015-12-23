@@ -10,14 +10,19 @@ var db = require('./creds')();
 var users = require('./testdata')('key-value.test');
 var util = require('util');
 var misc = require('./misc');
+var Q = require('kew');
 
 suite('Key-Value', function () {
-  suiteSetup(function(done) {
-    users.reset(done);
+  suiteSetup(function() {
+    return users.reset();
   });
 
-  test('Put/Get roundtrip', function (done) {
-    db.put(users.collection, users.steve.email, users.steve)
+  suiteTeardown(function() {
+    return db.deleteCollection(users.collection);
+  });
+
+  test('Put/Get roundtrip', function () {
+    return db.put(users.collection, users.steve.email, users.steve)
       .then(function (res) {
         assert.equal(201, res.statusCode);
         return db.get(users.collection, users.steve.email);
@@ -25,27 +30,21 @@ suite('Key-Value', function () {
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.deepEqual(users.steve, res.body);
-        done();
-      })
-      .fail(function (e) {
-        done(e);
+        return Q.resolve(res);
       });
   });
 
-  test('Get by ref', function(done) {
-    db.get(users.collection, users.steve.email, '0eb6642ca3efde45')
+  test('Get by ref', function() {
+    return db.get(users.collection, users.steve.email, '0eb6642ca3efde45')
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.deepEqual(users.steve, res.body);
-        done();
-      })
-      .fail(function (e) {
-        done(e);
+        return Q.resolve(res);
       });
   });
 
-  test('List refs for a key', function(done) {
-    db.put(users.collection, users.steve.email, users.steve_v1)
+  test('List refs for a key', function() {
+    return db.put(users.collection, users.steve.email, users.steve_v1)
       .then(function (res) {
         assert.equal(201, res.statusCode);
         return db.list_refs(users.collection, users.steve.email);
@@ -55,15 +54,12 @@ suite('Key-Value', function () {
         assert.equal(2, res.body.count);
         assert.equal("e85762917a99acce", res.body.results[0].path.ref);
         assert.equal("0eb6642ca3efde45", res.body.results[1].path.ref);
-        done();
-      })
-    .fail(function (e) {
-      done(e);
+        return Q.resolve(res);
     });
   });
 
-  test('Get list of values from a collection', function(done) {
-    db.list(users.collection, {limit:1})
+  test('Get list of values from a collection', function() {
+    return db.list(users.collection, {limit:1})
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.equal(1, res.body.count);
@@ -86,15 +82,12 @@ suite('Key-Value', function () {
         // in the collection and the beforeKey predicate has restricted the list
         // to only the first item
         assert.equal(undefined, res.body.next);
-        done();
-      })
-    .fail(function (e) {
-      done(e);
+        return Q.resolve(res);
     });
   });
 
-  test('Partial updates: merge', function(done) {
-    db.merge(users.collection, users.steve.email, {type: "consultant"})
+  test('Partial updates: merge', function() {
+    return db.merge(users.collection, users.steve.email, {type: "consultant"})
       .then(function (res) {
         assert.equal(201, res.statusCode);
         return db.get(users.collection, users.steve.email);
@@ -102,15 +95,12 @@ suite('Key-Value', function () {
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.deepEqual(users.steve_v2, res.body);
-        done();
-      })
-      .fail(function (e) {
-        done(e);
+        return Q.resolve(res);
       });
   });
 
-  test('Partial updates: patch', function(done) {
-    db.newPatchBuilder(users.collection, users.steve.email)
+  test('Partial updates: patch', function() {
+    return db.newPatchBuilder(users.collection, users.steve.email)
       .add("type", "salaried")
       .copy("type", "paytype")
       .test("paytype", "salaried")
@@ -123,45 +113,36 @@ suite('Key-Value', function () {
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.deepEqual(users.steve_v3, res.body);
-        done();
-      })
-      .fail(function (e) {
-        done(e);
+        return Q.resolve(res);
       });
   });
 
-  test('If-None-Match put', function(done) {
-    db.put(users.collection, users.david.email, users.david, false)
+  test('If-None-Match put', function() {
+    return db.put(users.collection, users.david.email, users.david, false)
       .fail(function (res) {
         assert.equal(412, res.statusCode);
         return db.put(users.collection, users.kelsey.email, users.kelsey, false);
       })
       .then(function (res) {
         assert.equal(201, res.statusCode);
-        done();
-      })
-      .fail(function (e) {
-        done(e);
+        return Q.resolve(res);
       });
   });
 
-  test('If-Match put', function(done) {
-    db.put(users.collection, users.kelsey.email, users.kelsey, 'badetag')
+  test('If-Match put', function() {
+    return db.put(users.collection, users.kelsey.email, users.kelsey, 'badetag')
       .fail(function (res) {
         assert.equal(400, res.statusCode);
         return db.put(users.collection, users.kelsey.email, users.kelsey_v1, 'c333c79ab9169d1f');
       })
     .then(function (res) {
       assert.equal(201, res.statusCode);
-      done();
-    })
-    .fail(function (e) {
-      done(e);
+      return Q.resolve(res);
     });
   });
 
-  test('If-Match patch', function(done) {
-    db.get(users.collection, users.steve.email)
+  test('If-Match patch', function() {
+    return db.get(users.collection, users.steve.email)
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.deepEqual(users.steve_v3, res.body);
@@ -169,16 +150,17 @@ suite('Key-Value', function () {
           .add("type", "consultant")
           .apply("00242d00737faf60");
       })
+      .then(function() { return Q.reject("Expected patch to fail"); })
       .fail(function (res) {
         assert.equal(412, res.statusCode);
-        done();
+        return Q.resolve(res);
       });
   });
 
-  test('Merge as upsert', function(done) {
+  test('Merge as upsert', function() {
     var key = users.steve.email + '_2';
 
-    db.merge(users.collection, key, {type: "consultant"}, {upsert:true})
+    return db.merge(users.collection, key, {type: "consultant"}, {upsert:true})
       .then(function (res) {
         assert.equal(201, res.statusCode);
         return db.get(users.collection, key);
@@ -186,10 +168,7 @@ suite('Key-Value', function () {
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.deepEqual({type: "consultant"}, res.body);
-        done();
-      })
-      .fail(function (e) {
-        done(e);
+        return Q.resolve(res);
       });
   });
 

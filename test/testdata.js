@@ -77,7 +77,7 @@ var USER_EVENTS = {
       ]
     }
   }
-}
+};
 
 function delete_all(dels) {
   return Q.all(dels)
@@ -86,85 +86,81 @@ function delete_all(dels) {
       for (var i in res) {
         assert.equal(204, res[i].statusCode);
       }
+      return Q.resolve(res);
     })
     .fail(function(res) {
       assert.equal(404, res.statusCode);
-    })
+      return Q.resolve(res);
+    });
 }
 
-Users.prototype.reset = function(done) {
+Users.prototype.reset = function() {
   var dels = [];
   var obj = this;
   var collection = this.collection;
-  db.search(collection, '@path.kind:event', {limit:100})
+  return db.search(collection, '@path.kind:event', {limit:100})
     .then(function(res) {
-      var results = res.body.results
+      var results = res.body.results;
       for(var i=0;i<results.length;i++) {
-        var path = results[i].path
+        var path = results[i].path;
         dels.push(db.newEventBuilder()
           .from(path.collection, path.key)
           .type(path.type)
           .time(path.timestamp)
           .ordinal(path.ordinal_str)
-          .remove())
+          .remove());
       }
-      return delete_all(dels)
+      return delete_all(dels);
     })
     .then(function(res){
-      dels = []
-      dels.push(db.remove(collection, obj.steve.email, true))
-      dels.push(db.remove(collection, obj.steve.email+'_2', true))
-      dels.push(db.remove(collection, obj.david.email, true))
-      dels.push(db.remove(collection, obj.kelsey.email, true))
-      return delete_all(dels)
+      dels = [];
+      dels.push(db.remove(collection, obj.steve.email, true));
+      dels.push(db.remove(collection, obj.steve.email+'_2', true));
+      dels.push(db.remove(collection, obj.david.email, true));
+      dels.push(db.remove(collection, obj.kelsey.email, true));
+      return delete_all(dels);
     })
     .then(function(res) {
       return db.put(collection, obj.david.email, obj.david);
     })
     .then(function (res) {
       assert.equal(201, res.statusCode);
-      done();
-    })
-    .fail(function(res){
-      done(res)
-    })
+      return Q.resolve(res);
+    });
 };
 
-Users.prototype.insertAll = function(done) {
+Users.prototype.insertAll = function() {
   var inserts = [];
   var collection = this.collection;
 
   inserts.push(db.put(collection, this.steve.email, this.steve));
   inserts.push(db.put(collection, this.kelsey.email, this.kelsey));
   for (var user_id in USER_EVENTS) {
-    var user = USER_EVENTS[user_id]
-    var user_key = user.key
+    var user = USER_EVENTS[user_id];
+    var user_key = user.key;
     for (var event_name in user.events) {
-      var event_list = user.events[event_name]
+      var event_list = user.events[event_name];
       for (var i=0; i<event_list.length; i++) {
         inserts.push(db.newEventBuilder()
             .from(collection, user_key)
             .type(event_name)
             .data(event_list[i])
             .create()
-        )
+        );
       }
     }
   }
-  Q.all(inserts)
+  return Q.all(inserts)
     .then(function (res) {
       assert.equal(inserts.length, res.length);
       for (var i in res) {
         assert.equal(201, res[i].statusCode);
       }
       // Give search a chance to index all changes
-      setTimeout(done, 1500);
-    })
-    .fail(function (res) {
-      done(res);
+      return Q.delay(res, 3000);
     });
 };
 
 module.exports = function(testName) {
-  return new Users(testName + "_users_" + process.version);
-}
+  return new Users(testName + "_users_" + process.version + "_" + Math.floor(Math.random() * 10000));
+};
