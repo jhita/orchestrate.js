@@ -34,6 +34,32 @@ suite('Key-Value', function () {
       });
   });
 
+  test('Put/Get roundtrip, with whitelist field filtering', function () {
+    return db.put(users.collection, users.steve.email, users.steve)
+      .then(function (res) {
+        assert.equal(201, res.statusCode);
+        return db.get(users.collection, users.steve.email, null, { 'with_fields' : 'value.name' });
+      })
+      .then(function (res) {
+        assert.equal(200, res.statusCode);
+        assert.equal('{"name":"Steve Kaliski"}', JSON.stringify(res.body));
+        return Q.resolve(res);
+      });
+  });
+
+  test('Put/Get roundtrip, with blacklist field filtering', function () {
+    return db.put(users.collection, users.steve.email, users.steve)
+      .then(function (res) {
+        assert.equal(201, res.statusCode);
+        return db.get(users.collection, users.steve.email, null, { 'without_fields' : [ 'value.email', 'value.location', 'value.type', 'value.gender' ] });
+      })
+      .then(function (res) {
+        assert.equal(200, res.statusCode);
+        assert.equal('{"name":"Steve Kaliski"}', JSON.stringify(res.body));
+        return Q.resolve(res);
+      });
+  });
+
   test('Get by ref', function() {
     return db.get(users.collection, users.steve.email, '0eb6642ca3efde45')
       .then(function (res) {
@@ -51,9 +77,11 @@ suite('Key-Value', function () {
       })
       .then(function (res) {
         assert.equal(200, res.statusCode);
-        assert.equal(2, res.body.count);
+        assert.equal(4, res.body.count);
         assert.equal("e85762917a99acce", res.body.results[0].path.ref);
         assert.equal("0eb6642ca3efde45", res.body.results[1].path.ref);
+        assert.equal("0eb6642ca3efde45", res.body.results[2].path.ref);
+        assert.equal("0eb6642ca3efde45", res.body.results[3].path.ref);
         return Q.resolve(res);
     });
   });

@@ -33,11 +33,34 @@ var getRelation = function(collection, key, toCollection, toKey, kind) {
     .related(kind);
 };
 
-var listRelations = function(collection, from, kinds) {
-  return db.newGraphReader()
-    .get()
-    .from(collection, from)
-    .related(kinds);
+var listRelations = function(collection, from, kinds, withFields, withoutFields) {
+  var hasWithFields = typeof(withFields) !== "undefined";
+  var hasWithoutFields = typeof(withoutFields) !== "undefined";
+  if (hasWithFields && hasWithoutFields) {
+    return db.newGraphReader()
+      .get()
+      .from(collection, from)
+      .withFields(withFields)
+      .withoutFields(withoutFields)
+      .related(kinds);
+  } else if (hasWithFields) {
+    return db.newGraphReader()
+      .get()
+      .from(collection, from)
+      .withFields(withFields)
+      .related(kinds);
+  } else if (hasWithoutFields) {
+    return db.newGraphReader()
+      .get()
+      .from(collection, from)
+      .withoutFields(withoutFields)
+      .related(kinds);
+  } else {
+    return db.newGraphReader()
+      .get()
+      .from(collection, from)
+      .related(kinds);
+    }
 };
 
 suite('Graph', function () {
@@ -181,6 +204,24 @@ suite('Graph', function () {
       .then(function (res) {
         assert.equal(200, res.statusCode);
         assert.deepEqual(users.david, res.body.results[0].value);
+        return Q.resolve(res);
+      });
+  });
+
+  test('Traverse graph relationship, with whitelist field filtering', function() {
+    return listRelations(users.collection, users.steve.email, [ 'friend', 'friend' ], 'value.name', null)
+      .then(function (res) {
+        assert.equal(200, res.statusCode);
+        assert.deepEqual({"name":"David Byrd"}, res.body.results[0].value);
+        return Q.resolve(res);
+      });
+  });
+
+  test('Traverse graph relationship, with blacklist field filtering', function() {
+    return listRelations(users.collection, users.steve.email, [ 'friend', 'friend' ], null, [ 'value.email', 'value.location', 'value.type', 'value.gender' ])
+      .then(function (res) {
+        assert.equal(200, res.statusCode);
+        assert.deepEqual({"name":"David Byrd"}, res.body.results[0].value);
         return Q.resolve(res);
       });
   });
