@@ -32,6 +32,30 @@ suite('Search', function () {
       });
   });
 
+  // Basic search with whitelist field filtering
+  test('Basic search with whitelist field filtering', function () {
+    return db.newSearchBuilder()
+      .collection(users.collection)
+      .withFields('value.name')
+      .query('value.name:"Steve Kaliski"')
+      .then(function (res) {
+        assert.equal('{"name":"Steve Kaliski"}', JSON.stringify(res.body.results[0].value));
+        return Q.resolve(res);
+      });
+  });
+
+  // Basic search with blacklist field filtering
+  test('Basic search with blacklist field filtering', function () {
+    return db.newSearchBuilder()
+      .collection(users.collection)
+      .withoutFields('value.email', 'value.location', 'value.type', 'value.gender')
+      .query('value.name:"Steve Kaliski"')
+      .then(function (res) {
+        assert.equal('{"name":"Steve Kaliski"}', JSON.stringify(res.body.results[0].value));
+        return Q.resolve(res);
+      });
+  });
+
   // Cross-collection search (find all items in the 'users' collections, via query clause)
   test('Cross-collection search', function () {
     return db.newSearchBuilder()

@@ -61,4 +61,84 @@ suite('Events', function () {
         return Q.resolve(res);
       });
   });
+
+  test('Put/Get roundtrip, with whitelist field filtering', function () {
+    var op = function(tstamp, data) {
+      return db.newEventBuilder()
+        .from(users.collection, users.steve.email)
+        .type('update')
+        .time(tstamp)
+        .ordinal(0)
+        .data({"text": data, "foo" : "bar", "bing" : "bong", "zip" : "zap"})
+        .create(); };
+
+    // Writes are done asynchronously, so there is no guarantee of order; even
+    // so mix up the invocations just in case we got lucky and the writes were
+    // properly ordered
+    var writes = [];
+    writes.push(op(2, "message2"));
+    writes.push(op(3, "message3"));
+    writes.push(op(1, "message1"));
+
+    return Q.all(writes)
+      .then(function (res) {
+        assert.equal(3, res.length);
+        for (var i in res) {
+          assert.equal(201, res[i].statusCode);
+        }
+
+        return db.newEventReader()
+          .from(users.collection, users.steve.email)
+          .type('update')
+          .withFields('value.text')
+          .list();
+      })
+      .then(function (res) {
+        for (var i in res.body.results) {
+          var timestamp = res.body.results[i].timestamp;
+          assert.equal('{"text":"message' + timestamp  + '"}', JSON.stringify(res.body.results[i].value));
+        }
+        return Q.resolve(res);
+      });
+  });
+
+  test('Put/Get roundtrip, with blacklist field filtering', function () {
+    var op = function(tstamp, data) {
+      return db.newEventBuilder()
+        .from(users.collection, users.steve.email)
+        .type('update')
+        .time(tstamp)
+        .ordinal(0)
+        .data({"text": data, "foo" : "bar", "bing" : "bong", "zip" : "zap"})
+        .create(); };
+
+    // Writes are done asynchronously, so there is no guarantee of order; even
+    // so mix up the invocations just in case we got lucky and the writes were
+    // properly ordered
+    var writes = [];
+    writes.push(op(2, "message2"));
+    writes.push(op(3, "message3"));
+    writes.push(op(1, "message1"));
+
+    return Q.all(writes)
+      .then(function (res) {
+        assert.equal(3, res.length);
+        for (var i in res) {
+          assert.equal(201, res[i].statusCode);
+        }
+
+        return db.newEventReader()
+          .from(users.collection, users.steve.email)
+          .type('update')
+          .withoutFields('value.foo', 'value.bing', 'value.zip')
+          .list();
+      })
+      .then(function (res) {
+        for (var i in res.body.results) {
+          var timestamp = res.body.results[i].timestamp;
+          assert.equal('{"text":"message' + timestamp  + '"}', JSON.stringify(res.body.results[i].value));
+        }
+        return Q.resolve(res);
+      });
+  });
 });
