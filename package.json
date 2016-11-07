@@ -32,7 +32,7 @@
     "driver"
   ],
   "dependencies": {
-    "request": "~2.62.0",
+    "request": "~2.78.0",
     "kew": "~0.7.0",
     "parse-link-header": "~0.4.1"
   },
@@ -44,9 +44,9 @@
     "mocha-lcov-reporter": "0.0.2"
   },
   "scripts": {
-    "test": "npm run cov && mocha -u tdd -t 5000",
+    "test": "npm run cov && mocha -u tdd -t 70000",
     "cov": "jscoverage lib lib-cov",
-    "report": "npm run cov && mocha -u tdd -R html-cov -t 5000 > coverage.html",
+    "report": "npm run cov && mocha -u tdd -R html-cov -t 70000 > coverage.html",
     "coveralls": "npm run cov && mocha -u tdd -t 5000 -R mocha-lcov-reporter | ./node_modules/coveralls/bin/coveralls.js"
   }
 }
