@@ -22,14 +22,17 @@ suite('Search', function () {
 
   // Basic search
   test('Basic search', function () {
-    return db.newSearchBuilder()
-      .collection(users.collection)
-      .query('location: New*')
-      .then(function (res) {
-        assert.equal(200, res.statusCode);
-        assert.equal(2, res.body.count);
-        return Q.resolve(res);
-      });
+    // Give search a chance to index relationships
+    return Q.delay(60000).then(function() {
+      return db.newSearchBuilder()
+        .collection(users.collection)
+        .query('location: New*')
+        .then(function (res) {
+          assert.equal(200, res.statusCode);
+          assert.equal(2, res.body.count);
+          return Q.resolve(res);
+        })
+    });
   });
 
   // Basic search with whitelist field filtering

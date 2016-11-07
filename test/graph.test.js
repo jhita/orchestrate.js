@@ -12,7 +12,7 @@ var util = require('util');
 
 var createRelation = function(collection, from, to, kind, data, ref) {
   var builder = db.newGraphBuilder().create();
-  
+
   if (typeof data !== 'undefined') {
     builder.data(data);
   }
@@ -136,7 +136,7 @@ suite('Graph', function () {
           assert.equal(201, res[i].statusCode);
         }
         // Give search a chance to index relationships
-        return Q.delay(3000).then(function() {
+        return Q.delay(60000).then(function() {
           // Retrieve each of the relations and make sure they contain the correct properties
           return Q.all([
               searchForRelationship("@path.source.collection:`" + users.collection + "` AND value.foo:bar", users.steve.email, users.kelsey.email, "likes"),
@@ -194,7 +194,7 @@ suite('Graph', function () {
           .then(function() {
             return checkRelationProperties(users.collection, users.kelsey.email, users.david.email, kind, properties2[2]);
           }));
-            
+
         return Q.all(promises);
       });
   });
